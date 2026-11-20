@@ -1,0 +1,116 @@
+# GPU worker image (g4dn.xlarge, NVIDIA T4): python -m detector.worker
+# Built by CDK (DockerImageAsset, linux/amd64) from the repo root:
+#   docker buildx build --platform linux/amd64 -f docker/Dockerfile.gpu .
+#
+# No nvidia/cuda base image: torch's PyPI wheels bring the CUDA 13.2 runtime as nvidia-*
+# packages, and the driver comes from the host (ECS GPU AMI + NVIDIA container runtime).
+# CUDA 13 needs NVIDIA driver >= 580 on the host; the worker logs the driver at startup.
+# Fallback for an older driver: install torch==2.14.1 and its matching torchvision from
+# https://download.pytorch.org/whl/cu126 in step 1 instead.
+
+FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
+
+# Requirement lists, exported from uv.lock in their own stage. The main stage copies only
+# these files, and BuildKit keys a COPY on file content: a lockfile change that leaves the
+# ml group alone (for example, API or UI dependencies) keeps every layer below cached, so
+# the next deploy doesn't re-push them (several GB for the CUDA layer).
+# triton is left out: only torch.compile uses it, and it is about 700 MB.
+FROM python:3.14-slim-bookworm AS reqs
+COPY --from=uv /uv /usr/local/bin/uv
+WORKDIR /src
+COPY pyproject.toml uv.lock ./
+RUN mkdir /reqs \
+    && uv export --frozen --no-default-groups --group ml --no-emit-project --no-hashes \
+        -o /tmp/all.txt \
+    && grep -E '^[a-z0-9]' /tmp/all.txt | grep -vE '^triton==' > /tmp/locked.txt \
+    && grep -E '^(torch|torchvision|cuda-[a-z-]+|nvidia-[a-z0-9-]+)==' /tmp/locked.txt \
+        | grep -v '^nvidia-ml-py==' > /reqs/cuda.txt \
+    && grep -E '^onnxruntime-gpu==' /tmp/locked.txt > /reqs/ort.txt \
+    && grep -E '^tensorrt-' /tmp/locked.txt > /reqs/trt.txt \
+    && cat /reqs/cuda.txt /reqs/ort.txt /reqs/trt.txt | grep -vxF -f - /tmp/locked.txt \
+        > /reqs/rest.txt
+
+FROM python:3.14-slim-bookworm
+
+# OpenCV (pulled in by ultralytics as opencv-python) needs libGL and glib at import time.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=uv /uv /usr/local/bin/uv
+ENV UV_SYSTEM_PYTHON=1 \
+    UV_COMPILE_BYTECODE=1 \
+    UV_NO_CACHE=1
+
+WORKDIR /app
+
+# Everything comes from uv.lock (exact versions, --no-deps), split into layers so the large
+# ones are pushed once and reused while the rest changes.
+COPY --from=reqs /reqs/cuda.txt /tmp/cuda.txt
+
+# 1. torch, torchvision and the CUDA runtime libraries (about 4-5 GB).
+RUN uv pip install --no-deps -r /tmp/cuda.txt
+
+# 2. ONNX Runtime (CUDA 13 build) and the TensorRT 10.14 libraries its TensorRT backend
+#    loads (about 2 GB). The TensorRT libraries come only from NVIDIA's index.
+COPY --from=reqs /reqs/ort.txt /reqs/trt.txt /tmp/
+RUN uv pip install --no-deps -r /tmp/ort.txt \
+    && uv pip install --no-deps --index-url https://pypi.nvidia.com -r /tmp/trt.txt
+
+# 3. Everything else in the ml group.
+COPY --from=reqs /reqs/rest.txt /tmp/rest.txt
+RUN uv pip install --no-deps -r /tmp/rest.txt
+
+# 4. Weights, checked against a known hash so the image is reproducible.
+# The directory exists first: ADD --chmod would otherwise create it without search permission.
+RUN mkdir -m 0755 /app/models
+ADD --chmod=0644 --checksum=sha256:5d4a90cdc7a21786cc59cd19778e9eafff836df9e2da32524737c7ee6efe4fe5 \
+    https://github.com/ultralytics/assets/releases/download/v8.4.0/yolov8m.pt \
+    /app/models/yolov8m.pt
+
+# 5. ONNX models for the onnx-cuda / onnx-trt runtimes, exported from those weights:
+#    yolov8m.onnx (FP32, dynamic batch; TensorRT makes its FP16 engine from it) and
+#    yolov8m-fp16.onnx (FP16, float32 input and output) for the CUDA backend.
+#    Before src/ so a code change doesn't rebuild them.
+RUN cd /app/models \
+    && YOLO_OFFLINE=1 YOLO_CONFIG_DIR=/tmp/ultralytics python -c "\
+from ultralytics import YOLO; \
+YOLO('yolov8m.pt').export(format='onnx', imgsz=640, dynamic=True, simplify=True, opset=17)" \
+    && chmod 0644 /app/models/yolov8m.onnx && rm -rf /tmp/ultralytics
+# FP16 copy for the CUDA backend, exported straight from PyTorch (see the script for why).
+COPY docker/export_fp16.py /tmp/export_fp16.py
+RUN YOLO_OFFLINE=1 YOLO_CONFIG_DIR=/tmp/ultralytics \
+        python /tmp/export_fp16.py /app/models/yolov8m.pt /app/models/yolov8m-fp16.onnx \
+    && chmod 0644 /app/models/yolov8m-fp16.onnx && rm -rf /tmp/ultralytics /tmp/export_fp16.py
+
+# 6. The detector package itself (its dependencies are already installed).
+COPY pyproject.toml README.md ./
+COPY src/ ./src/
+RUN uv pip install --no-deps .
+
+ENV MODELS_DIR=/app/models \
+    LD_LIBRARY_PATH=/usr/local/lib/python3.14/site-packages/tensorrt_libs \
+    YOLO_OFFLINE=1 \
+    YOLO_CONFIG_DIR=/tmp/ultralytics \
+    PYTHONUNBUFFERED=1 \
+    DEVICE=cuda
+
+# No GPU at build time. Check: a CUDA build of torch; ONNX Runtime with the CUDA and TensorRT
+# backends; the TensorRT library loads; both ONNX models load (on the CPU backend).
+RUN python -c "\
+import ctypes, torch, cv2, pynvml, detector.worker, onnxruntime as ort; \
+assert torch.version.cuda, 'CPU-only torch'; \
+p = ort.get_available_providers(); \
+assert {'CUDAExecutionProvider', 'TensorrtExecutionProvider'} <= set(p), p; \
+ctypes.CDLL('libnvinfer.so.10'); \
+[ort.InferenceSession(f'/app/models/{f}', providers=['CPUExecutionProvider']) \
+ for f in ('yolov8m.onnx', 'yolov8m-fp16.onnx')]; \
+print('torch', torch.__version__, 'cuda', torch.version.cuda, 'onnxruntime', ort.__version__)"
+
+# /tmp/trt-cache is mounted from a shared Docker volume (TensorRT engine cache). Docker copies
+# this directory's ownership into the volume when it's first created, so the worker can write.
+RUN useradd --create-home --uid 10001 worker \
+    && mkdir -p /tmp/trt-cache && chown worker:worker /tmp/trt-cache
+USER worker
+
+CMD ["python", "-m", "detector.worker"]

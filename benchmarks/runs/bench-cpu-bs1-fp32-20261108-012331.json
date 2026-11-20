@@ -1,0 +1,61 @@
+{
+  "batch_id": "bench-cpu-bs1-fp32-20261108-012331",
+  "created_at": "2026-11-08T02:00:49+00:00",
+  "kind": "cpu",
+  "instance_type": "c6i.2xlarge",
+  "runtime": "pytorch",
+  "precision": "fp32",
+  "batch_size": 1,
+  "hourly_usd": 0.34,
+  "prices_checked": "2026-11-07",
+  "task_startup_s": 198.5,
+  "batch_record": {
+    "expected_count": 5000,
+    "completed": 5000,
+    "failed": 0
+  },
+  "metrics": {
+    "images": 5000,
+    "processed": 5000,
+    "failed": 0,
+    "skipped": 0,
+    "batches": 5000,
+    "mean_batch_images": 1.0,
+    "seconds": 1796.73,
+    "images_per_s": 2.78,
+    "cost_per_1000_usd": 0.03394,
+    "stage_ms_per_batch": {
+      "receive": 6.45,
+      "skip_check": 3.44,
+      "download": 73.13,
+      "decode": 2.4,
+      "preprocess": 1.69,
+      "inference": 215.92,
+      "postprocess": 0.66,
+      "write": 49.75,
+      "ack": 5.19
+    },
+    "stage_ms_per_image": {
+      "receive": 6.45,
+      "skip_check": 3.44,
+      "download": 73.13,
+      "decode": 2.4,
+      "preprocess": 1.69,
+      "inference": 215.92,
+      "postprocess": 0.66,
+      "write": 49.75,
+      "ack": 5.19
+    },
+    "gpu_util_mean": null,
+    "gpu_mem_mb_peak": null
+  },
+  "startup": {
+    "event": "startup",
+    "worker_id": "eb5c768b7f9f-1",
+    "batch_size": 1,
+    "runtime": "pytorch",
+    "precision": "fp32",
+    "device": "cpu",
+    "torch": "2.15.0+cpu"
+  }
+}

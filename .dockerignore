@@ -1,0 +1,8 @@
+# Build context is the repo root; send only what the images need.
+*
+!docker/
+!src/
+!pyproject.toml
+!uv.lock
+!README.md
+**/__pycache__

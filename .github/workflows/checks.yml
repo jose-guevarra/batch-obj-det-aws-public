@@ -1,0 +1,71 @@
+# Lint, unit tests and CDK synth. Reused by ci.yml (pull requests) and deploy.yml
+# (merges into develop); needs no AWS access.
+name: Checks
+
+on:
+  workflow_call:
+    secrets:
+      ENVIRONMENTS_CONF_JSON:
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, unit tests, synth
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+        with:
+          environments-conf: ${{ secrets.ENVIRONMENTS_CONF_JSON }}
+
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      # The fast suite: inference core and runtimes, the worker, store, finalize and unzip
+      # against moto, the API, renderer and UI, and the infra templates. Tests marked slow
+      # (YOLOv8m weights and COCO images) stay excluded, as locally.
+      - name: Unit tests
+        run: uv run pytest -q --junitxml="$RUNNER_TEMP/pytest.xml"
+
+      - name: Unit test summary
+        if: always()
+        shell: python
+        run: |
+          import os, xml.etree.ElementTree as ET
+          path = os.path.join(os.environ["RUNNER_TEMP"], "pytest.xml")
+          out = open(os.environ["GITHUB_STEP_SUMMARY"], "a")
+          if not os.path.exists(path):
+              out.write("### Unit tests\n\nNo results (the tests didn't run).\n")
+              raise SystemExit
+          root = ET.parse(path).getroot()
+          suite = root if root.tag == "testsuite" else root.find("testsuite")
+          n = {k: int(suite.get(k, 0)) for k in ("tests", "failures", "errors", "skipped")}
+          passed = n["tests"] - n["failures"] - n["errors"] - n["skipped"]
+          icon = "✅" if n["failures"] + n["errors"] == 0 else "❌"
+          out.write(f"### {icon} Unit tests\n\n{passed} passed, {n['failures']} failed, "
+                    f"{n['errors']} errors, {n['skipped']} skipped ({suite.get('time')} s)\n")
+          bad = [c for c in suite.iter("testcase")
+                 if c.find("failure") is not None or c.find("error") is not None]
+          if bad:
+              out.write("\n| Failed test |\n| --- |\n")
+              for c in bad:
+                  out.write(f"| `{c.get('classname')}::{c.get('name')}` |\n")
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pytest-results
+          path: ${{ runner.temp }}/pytest.xml
+          if-no-files-found: ignore
+
+      - name: CDK synth
+        working-directory: infra
+        run: npx cdk synth --quiet -c env=dev

@@ -1,0 +1,89 @@
+{
+  "batch_id": "bench-gpu-onnx-trt-bs32-fp16-pipe-20261111-015827",
+  "created_at": "2026-11-11T02:12:51+00:00",
+  "kind": "gpu",
+  "instance_type": "g4dn.xlarge",
+  "runtime": "onnxruntime-trt",
+  "precision": "fp16",
+  "batch_size": 32,
+  "pipelined": true,
+  "hourly_usd": 0.526,
+  "prices_checked": "2026-11-07",
+  "task_startup_s": 361.4,
+  "warmup_s": 456.5,
+  "batch_record": {
+    "expected_count": 500,
+    "completed": 500,
+    "failed": 0
+  },
+  "metrics": {
+    "images": 500,
+    "processed": 500,
+    "failed": 0,
+    "skipped": 0,
+    "batches": 16,
+    "mean_batch_images": 31.25,
+    "seconds": 8.67,
+    "images_per_s": 57.65,
+    "cost_per_1000_usd": 0.00253,
+    "stage_ms_per_batch": {
+      "receive": 47.7,
+      "skip_check": 10.25,
+      "load": 356.73,
+      "preprocess": 111.22,
+      "wait_input": 312.43,
+      "inference": 174.66,
+      "postprocess": 48.38,
+      "write": 95.34,
+      "ack": 38.09
+    },
+    "stage_ms_per_image": {
+      "receive": 1.53,
+      "skip_check": 0.33,
+      "load": 11.42,
+      "preprocess": 3.56,
+      "wait_input": 10.0,
+      "inference": 5.59,
+      "postprocess": 1.55,
+      "write": 3.05,
+      "ack": 1.22
+    },
+    "gpu_util_mean": 51.7,
+    "gpu_mem_mb_peak": 1965
+  },
+  "startup": {
+    "event": "startup",
+    "worker_id": "5bef9d35de10-1",
+    "batch_size": 32,
+    "pipelined": true,
+    "warmup_s": 456.5,
+    "runtime": "onnxruntime-trt",
+    "precision": "fp16",
+    "device": "cuda",
+    "onnxruntime": "1.31.1",
+    "providers": [
+      "TensorrtExecutionProvider",
+      "CUDAExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "provider_options": {
+      "device_id": 0,
+      "trt_fp16_enable": true,
+      "trt_engine_cache_enable": true,
+      "trt_engine_cache_path": "/tmp/trt-cache",
+      "trt_timing_cache_enable": true,
+      "trt_timing_cache_path": "/tmp/trt-cache",
+      "trt_profile_min_shapes": "images:1x3x640x640",
+      "trt_profile_opt_shapes": "images:32x3x640x640",
+      "trt_profile_max_shapes": "images:32x3x640x640",
+      "trt_cuda_graph_enable": true
+    },
+    "model_file": "yolov8m.onnx",
+    "device_name": "Tesla T4",
+    "driver": "580.178.04",
+    "gpu": "Tesla T4"
+  },
+  "extra_env": {
+    "THREAD_PROFILE": "1"
+  }
+}

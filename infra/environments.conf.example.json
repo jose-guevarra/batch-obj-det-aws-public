@@ -1,0 +1,16 @@
+{
+  "dev": {
+    "account": "123456789012",
+    "region": "us-west-2",
+    "retain_data": false,
+    "api_allowed_cidrs": [
+      "203.0.113.7/32"
+    ],
+    "model": "yolov8m",
+    "gpu_instance_type": "g4dn.xlarge",
+    "cpu_instance_type": "c6i.2xlarge",
+    "gpu_max_instances": 2,
+    "cpu_max_instances": 2,
+    "github_repo": "jose-guevarra/batch-obj-det-aws"
+  }
+}

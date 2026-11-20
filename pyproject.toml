@@ -1,0 +1,93 @@
+[project]
+name = "batch-obj-det-aws"
+version = "0.1.0"
+description = "Batch object detection on AWS: S3 -> SQS -> ECS workers running YOLOv8m, benchmarked for throughput and cost."
+readme = "README.md"
+authors = [
+    { name = "Jose Guevarra", email = "jagx4669@gmail.com" }
+]
+license = "AGPL-3.0-only"
+# 3.14, not 3.15: onnxruntime / onnxruntime-gpu have no cp315 wheels yet (checked 2026-11-06).
+requires-python = ">=3.14,<3.15"
+dependencies = [
+    "boto3>=1.40",
+]
+
+[dependency-groups]
+api = [
+    "fastapi>=0.162.5",
+    "mangum>=0.22.0",
+]
+dev = [
+    "pytest>=8",
+    "ruff>=0.8",
+    "moto[s3,sqs,dynamodb]>=5",
+    "httpx>=0.28.1",
+]
+infra = [
+    "aws-cdk-lib>=2.200",
+    "constructs>=10",
+]
+# Inference and evaluation. Ultralytics is used only to download/load weights
+# (and export ONNX later); preprocessing and postprocessing are our own.
+# opencv-python, not -headless: ultralytics depends on opencv-python and the two conflict.
+ml = [
+    "torch>=2.15",
+    "torchvision>=0.29",
+    "ultralytics>=8.4.203",
+    "opencv-python>=5.0",
+    "numpy>=2.5",
+    "pycocotools>=2.0.11",
+    # ONNX Runtime: GPU build (CUDA 13) in the Linux image; the CPU build on macOS runs
+    # the exported model in local parity tests. onnx has no macOS cp314 wheel, so the
+    # ONNX export happens in the (Linux) image build.
+    "onnxruntime-gpu[cuda,cudnn]>=1.31.1; sys_platform == 'linux'",
+    "onnxruntime>=1.31.1; sys_platform == 'darwin'",
+    "onnx>=1.23.2; sys_platform == 'linux'",
+    "onnxslim>=0.1.99",
+    # TensorRT C++ libraries for ONNX Runtime's TensorRT backend. 10.14.1.48 is the version
+    # onnxruntime-gpu 1.31 (CUDA 13) is built against; only on NVIDIA's index.
+    "tensorrt-cu13-libs==10.14.1.48; sys_platform == 'linux'",
+]
+ui = [
+    "altair>=6.3.0",
+    "requests>=2.34.2",
+    "streamlit>=1.67.0",
+]
+
+[tool.uv]
+default-groups = ["dev", "infra", "ml", "api", "ui"]
+
+[[tool.uv.index]]
+name = "nvidia"
+url = "https://pypi.nvidia.com"
+explicit = true
+
+[tool.uv.sources]
+tensorrt-cu13-libs = { index = "nvidia" }
+
+[tool.uv.build-backend]
+module-name = "detector"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["infra"]
+markers = ["slow: needs YOLOv8m weights and the local COCO val2017 files"]
+addopts = "-m 'not slow'"
+# Starlette asks for httpx2 under TestClient; httpx works the same for these tests.
+filterwarnings = ["ignore:Using `httpx` with `starlette.testclient`"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+# infra/ modules are imported by bare name (CDK runs app.py from infra/).
+known-first-party = ["detector", "config", "stacks"]

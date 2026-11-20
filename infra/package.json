@@ -1,0 +1,8 @@
+{
+  "name": "batch-obj-det-aws-infra",
+  "private": true,
+  "description": "Project-local AWS CDK CLI for the infra/ stacks (run through the Makefile).",
+  "devDependencies": {
+    "aws-cdk": "2.1148.0"
+  }
+}

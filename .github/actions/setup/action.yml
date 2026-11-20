@@ -1,0 +1,57 @@
+name: Set up the project
+description: >
+  uv and the Python dependencies (cached), Node and the project-local CDK CLI, and the
+  environments config from a secret. Run actions/checkout first.
+inputs:
+  uv-sync-args:
+    description: >
+      Extra uv sync arguments. The default installs everything except TensorRT (for the
+      tests); the deploy job installs only the CDK dependencies.
+    default: --no-install-package tensorrt-cu13-libs
+  uv-cache:
+    description: Restore and save uv's package cache ("true" or "false").
+    default: "true"
+  environments-conf:
+    description: Contents of infra/environments.conf.json (the ENVIRONMENTS_CONF_JSON secret)
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v6
+      with:
+        enable-cache: ${{ inputs.uv-cache }}
+        cache-dependency-glob: uv.lock
+
+    # Everything in uv.lock except the TensorRT libraries (3.2 GB), which no test uses.
+    # UV_NO_SYNC: later `uv run` calls (pytest, and cdk.json's `uv run python app.py`) use
+    # this environment as is, instead of re-syncing and installing TensorRT after all.
+    - name: Install Python dependencies
+      shell: bash
+      run: |
+        uv sync --frozen ${{ inputs.uv-sync-args }}
+        echo "UV_NO_SYNC=1" >> "$GITHUB_ENV"
+
+    - uses: actions/setup-node@v5
+      with:
+        node-version: 24
+        cache: npm
+        cache-dependency-path: infra/package-lock.json
+
+    - name: Install the CDK CLI
+      shell: bash
+      working-directory: infra
+      run: npm ci
+
+    # infra/environments.conf.json is gitignored; infra/config.py reads ENVIRONMENTS_CONF.
+    - name: Write the environments config
+      shell: bash
+      env:
+        CONF: ${{ inputs.environments-conf }}
+      run: |
+        if [ -z "$CONF" ]; then
+          echo "::error::Set the ENVIRONMENTS_CONF_JSON repository secret (see README, CI/CD)"
+          exit 1
+        fi
+        printf '%s' "$CONF" > "$RUNNER_TEMP/environments.conf.json"
+        echo "ENVIRONMENTS_CONF=$RUNNER_TEMP/environments.conf.json" >> "$GITHUB_ENV"
+        echo "JSII_SILENCE_WARNING_UNTESTED_NODE_VERSION=1" >> "$GITHUB_ENV"

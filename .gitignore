@@ -1,0 +1,26 @@
+/data/datasets/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+
+# CDK (CLI installed locally in infra/node_modules)
+node_modules/
+cdk.out/
+cdk.context.json
+
+# Model weights and exports, evaluation output
+models/
+results/
+*.pt
+*.onnx
+*.engine
+
+# Local secrets and per-environment settings
+.env
+infra/environments.conf.json
+
+.DS_Store

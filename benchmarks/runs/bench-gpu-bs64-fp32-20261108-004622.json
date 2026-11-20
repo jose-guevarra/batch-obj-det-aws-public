@@ -1,0 +1,74 @@
+{
+  "batch_id": "bench-gpu-bs64-fp32-20261108-004622",
+  "created_at": "2026-11-08T00:50:24+00:00",
+  "kind": "gpu",
+  "instance_type": "g4dn.xlarge",
+  "runtime": "pytorch",
+  "precision": "fp32",
+  "batch_size": 64,
+  "hourly_usd": 0.526,
+  "prices_checked": "2026-11-07",
+  "task_startup_s": 5.5,
+  "batch_record": {
+    "expected_count": 5000,
+    "completed": 5000,
+    "failed": 0
+  },
+  "metrics": {
+    "images": 5000,
+    "processed": 5000,
+    "failed": 0,
+    "skipped": 0,
+    "batches": 79,
+    "mean_batch_images": 63.29,
+    "seconds": 186.2,
+    "images_per_s": 26.85,
+    "cost_per_1000_usd": 0.00544,
+    "stage_ms_per_batch": {
+      "receive": 54.71,
+      "skip_check": 13.26,
+      "download": 408.91,
+      "decode": 195.55,
+      "preprocess": 263.58,
+      "inference": 1165.34,
+      "postprocess": 60.34,
+      "write": 150.43,
+      "ack": 37.51
+    },
+    "stage_ms_per_image": {
+      "receive": 0.86,
+      "skip_check": 0.21,
+      "download": 6.46,
+      "decode": 3.09,
+      "preprocess": 4.16,
+      "inference": 18.41,
+      "postprocess": 0.95,
+      "write": 2.38,
+      "ack": 0.59
+    },
+    "gpu_util_mean": 49.1,
+    "gpu_mem_mb_peak": 6305
+  },
+  "startup": {
+    "event": "startup",
+    "worker_id": "07bfccd87ffa-1",
+    "batch_size": 64,
+    "runtime": "pytorch",
+    "precision": "fp32",
+    "device": "cuda",
+    "torch": "2.15.0+cu132",
+    "cuda": "13.2",
+    "device_name": "Tesla T4",
+    "capability": "sm_75",
+    "arch_list": [
+      "sm_75",
+      "sm_80",
+      "sm_86",
+      "sm_90",
+      "sm_100",
+      "sm_120"
+    ],
+    "driver": "580.178.04",
+    "gpu": "Tesla T4"
+  }
+}

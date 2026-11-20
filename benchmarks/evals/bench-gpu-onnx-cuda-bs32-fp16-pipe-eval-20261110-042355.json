@@ -1,0 +1,29 @@
+{
+  "batch_id": "bench-gpu-onnx-cuda-bs32-fp16-pipe-eval-20261110-042355",
+  "created_at": "2026-11-10T04:26:34+00:00",
+  "kind": "gpu",
+  "instance_type": "g4dn.xlarge",
+  "runtime": "onnxruntime-cuda",
+  "precision": "fp16",
+  "batch_size": 32,
+  "pipelined": true,
+  "settings": {
+    "batch_size": 16,
+    "limit": null,
+    "conf": 0.001,
+    "iou": 0.7,
+    "max_det": 300,
+    "multi_label": true
+  },
+  "images_scored": 5000,
+  "failed": [],
+  "detections": 623174,
+  "metrics": {
+    "map50_95": 0.5021,
+    "map50": 0.6706,
+    "map75": 0.5465,
+    "map_small": 0.3226,
+    "map_medium": 0.5565,
+    "map_large": 0.6644
+  }
+}

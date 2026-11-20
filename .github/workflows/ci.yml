@@ -1,0 +1,80 @@
+# Pull requests into develop: the checks (checks.yml), then a CDK diff against the deployed
+# stacks, posted as a PR comment.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-west-2' }}
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+    secrets:
+      ENVIRONMENTS_CONF_JSON: ${{ secrets.ENVIRONMENTS_CONF_JSON }}
+
+  diff:
+    name: CDK diff
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # OIDC token for the pull-request role
+      pull-requests: write # the diff comment
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: ./.github/actions/setup
+        with:
+          environments-conf: ${{ secrets.ENVIRONMENTS_CONF_JSON }}
+
+      # The PR role may assume only the CDK lookup role: it can read the deployed stacks,
+      # not publish or deploy anything.
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_PR_ROLE_ARN }}
+          role-session-name: gh-pr-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: CDK diff
+        working-directory: infra
+        run: |
+          set -o pipefail
+          npx cdk diff --method template -c env=dev --no-color 2>&1 \
+            | tee "$RUNNER_TEMP/cdk-diff.txt"
+
+      - name: Post the diff on the pull request
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- cdk-diff -->";
+            const limit = 60000;
+            let diff = fs.readFileSync(`${process.env.RUNNER_TEMP}/cdk-diff.txt`, "utf8")
+              .replace(/\u001b\[[0-9;]*m/g, "");
+            if (diff.length > limit) {
+              diff = diff.slice(0, limit) + "\n... (truncated; full diff in the job log)";
+            }
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = `${marker}\n### CDK diff (\`${sha}\`, against the deployed stacks)\n\n` +
+              "```\n" + diff + "\n```";
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(github.rest.issues.listComments,
+              { owner, repo, issue_number });
+            const mine = comments.find((c) => c.body && c.body.startsWith(marker));
+            if (mine) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }

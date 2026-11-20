@@ -1,0 +1,74 @@
+{
+  "batch_id": "bench-gpu-onnx-trt-bs64-fp16-pipe-20261110-025826",
+  "created_at": "2026-11-10T03:14:15+00:00",
+  "kind": "gpu",
+  "instance_type": "g4dn.xlarge",
+  "runtime": "onnxruntime-trt",
+  "precision": "fp16",
+  "batch_size": 64,
+  "pipelined": true,
+  "hourly_usd": 0.526,
+  "prices_checked": "2026-11-07",
+  "task_startup_s": 137.5,
+  "warmup_s": 766.2,
+  "batch_record": {
+    "expected_count": 500,
+    "completed": 500,
+    "failed": 0
+  },
+  "metrics": {
+    "images": 500,
+    "processed": 500,
+    "failed": 0,
+    "skipped": 0,
+    "batches": 8,
+    "mean_batch_images": 62.5,
+    "seconds": 8.7,
+    "images_per_s": 57.45,
+    "cost_per_1000_usd": 0.00254,
+    "stage_ms_per_batch": {
+      "receive": 89.93,
+      "skip_check": 17.65,
+      "load": 697.35,
+      "preprocess": 226.77,
+      "wait_input": 643.33,
+      "inference": 335.7,
+      "postprocess": 89.96,
+      "write": 137.91,
+      "ack": 42.78
+    },
+    "stage_ms_per_image": {
+      "receive": 1.44,
+      "skip_check": 0.28,
+      "load": 11.16,
+      "preprocess": 3.63,
+      "wait_input": 10.29,
+      "inference": 5.37,
+      "postprocess": 1.44,
+      "write": 2.21,
+      "ack": 0.68
+    },
+    "gpu_util_mean": 35.6,
+    "gpu_mem_mb_peak": 3307
+  },
+  "startup": {
+    "event": "startup",
+    "worker_id": "353f1965ccce-1",
+    "batch_size": 64,
+    "pipelined": true,
+    "warmup_s": 766.2,
+    "runtime": "onnxruntime-trt",
+    "precision": "fp16",
+    "device": "cuda",
+    "onnxruntime": "1.31.1",
+    "providers": [
+      "TensorrtExecutionProvider",
+      "CUDAExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "model_file": "yolov8m.onnx",
+    "device_name": "Tesla T4",
+    "driver": "580.178.04",
+    "gpu": "Tesla T4"
+  }
+}

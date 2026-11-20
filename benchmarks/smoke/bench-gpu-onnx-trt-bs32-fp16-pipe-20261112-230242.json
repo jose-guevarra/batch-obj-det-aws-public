@@ -1,0 +1,97 @@
+{
+  "batch_id": "bench-gpu-onnx-trt-bs32-fp16-pipe-20261112-230242",
+  "created_at": "2026-11-12T23:16:26+00:00",
+  "kind": "gpu",
+  "instance_type": "g4dn.xlarge",
+  "runtime": "onnxruntime-trt",
+  "precision": "fp16",
+  "batch_size": 32,
+  "pipelined": true,
+  "hourly_usd": 0.526,
+  "prices_checked": "2026-11-07",
+  "task_startup_s": 320.6,
+  "warmup_s": 456.4,
+  "batch_record": {
+    "expected_count": 500,
+    "completed": 500,
+    "failed": 0
+  },
+  "metrics": {
+    "images": 500,
+    "processed": 500,
+    "failed": 0,
+    "skipped": 0,
+    "batches": 16,
+    "mean_batch_images": 31.25,
+    "seconds": 9.47,
+    "images_per_s": 52.78,
+    "cost_per_1000_usd": 0.00277,
+    "stage_ms_per_batch": {
+      "receive": 47.51,
+      "skip_check": 12.07,
+      "load": 395.07,
+      "preprocess": 112.33,
+      "wait_input": 353.41,
+      "inference": 171.05,
+      "postprocess": 51.87,
+      "write": 116.01,
+      "ack": 25.39
+    },
+    "stage_ms_per_image": {
+      "receive": 1.52,
+      "skip_check": 0.39,
+      "load": 12.64,
+      "preprocess": 3.59,
+      "wait_input": 11.31,
+      "inference": 5.47,
+      "postprocess": 1.66,
+      "write": 3.71,
+      "ack": 0.81
+    },
+    "gpu_util_mean": 40.3,
+    "gpu_mem_mb_peak": 1965
+  },
+  "startup": {
+    "event": "startup",
+    "worker_id": "ad8a1fc9e5fe-1",
+    "batch_size": 32,
+    "pipelined": true,
+    "warmup_s": 456.4,
+    "runtime": "onnxruntime-trt",
+    "precision": "fp16",
+    "device": "cuda",
+    "onnxruntime": "1.31.1",
+    "providers": [
+      "TensorrtExecutionProvider",
+      "CUDAExecutionProvider",
+      "CPUExecutionProvider"
+    ],
+    "provider_options": {
+      "device_id": 0,
+      "trt_fp16_enable": true,
+      "trt_engine_cache_enable": true,
+      "trt_engine_cache_path": "/tmp/trt-cache/ab-20261112-230239-a",
+      "trt_timing_cache_enable": true,
+      "trt_timing_cache_path": "/tmp/trt-cache/ab-20261112-230239-a",
+      "trt_profile_min_shapes": "images:1x3x640x640",
+      "trt_profile_opt_shapes": "images:32x3x640x640",
+      "trt_profile_max_shapes": "images:32x3x640x640",
+      "trt_cuda_graph_enable": true
+    },
+    "model_file": "yolov8m.onnx",
+    "trt_cache_dir": "/tmp/trt-cache/ab-20261112-230239-a",
+    "prebuild_s": null,
+    "engine_from_cache": false,
+    "engines_built_in_process": [
+      "TensorrtExecutionProvider_TRTKernel_graph_main_graph_4123860068404432064_0_0_fp16_sm75.engine"
+    ],
+    "device_name": "Tesla T4",
+    "driver": "580.178.04",
+    "gpu": "Tesla T4"
+  },
+  "extra_env": {
+    "THREAD_PROFILE": "1",
+    "TRT_PREBUILD": "0",
+    "TRT_CACHE_DIR": "/tmp/trt-cache/ab-20261112-230239-a"
+  }
+}
